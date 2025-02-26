@@ -31,8 +31,8 @@
 ### 1️⃣ Clone Repository
 
 ```sh
-git clone https://github.com/ahmadbusrooo/app_walisantri.git
-cd app_walisantri
+git clone https://github.com/ahmadbusrooo/Frontend_walisantri.git
+cd Frontend_walisantri
 ```
 
 ### 2️⃣ Install Dependencies
