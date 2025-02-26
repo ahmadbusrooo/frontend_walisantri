@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "109822660993",
+    "project_id": "notifikasi-walisantri",
+    "storage_bucket": "notifikasi-walisantri.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:109822660993:android:0b4724860a48ca5b909880",
+        "android_client_info": {
+          "package_name": "com.example.app_walisantri"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCg10OkALYcjimafkewemlhaFYPKu0X268"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

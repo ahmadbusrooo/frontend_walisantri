@@ -1,0 +1,55 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services" // Plugin Firebase
+}
+
+android {
+    namespace "com.example.app_walisantri"
+    compileSdkVersion 34  // ✅ Gunakan versi 33 untuk kompatibilitas FCM & Firebase
+    ndkVersion flutter.ndkVersion
+
+    defaultConfig {
+        applicationId "com.example.app_walisantri"
+        minSdkVersion 21  // ✅ Pastikan minSdkVersion >= 21
+        targetSdkVersion 34 // ✅ Sesuaikan dengan compileSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+
+        multiDexEnabled true  // ✅ Jika aplikasi memiliki banyak dependensi
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"  // ✅ Pastikan Kotlin JVM target 1.8
+    }
+}
+
+dependencies {
+    // ✅ Firebase BoM (Bill of Materials) untuk memastikan kompatibilitas semua Firebase dependencies
+    implementation platform('com.google.firebase:firebase-bom:33.8.0')
+
+    // ✅ Firebase Analytics
+    implementation 'com.google.firebase:firebase-analytics'
+
+    // ✅ Firebase Cloud Messaging (FCM)
+    implementation 'com.google.firebase:firebase-messaging'
+
+    // ✅ MultiDex support (jika dibutuhkan)
+    implementation 'androidx.multidex:multidex:2.0.1'
+}
+
+flutter {
+    source "../.."
+}
