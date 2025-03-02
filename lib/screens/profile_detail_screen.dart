@@ -114,7 +114,7 @@ class ProfileDetailScreen extends StatelessWidget {
                 radius: isWideScreen ? 60 : 50,
                 backgroundImage: NetworkImage(
                   profileData['student_img'] != null
-                      ? "https://walisantri.ppalmaruf.com/uploads/student/${profileData['student_img']}"
+                      ? "https://siputra.ppalmaruf.com/uploads/student/${profileData['student_img']}"
                       : "https://via.placeholder.com/150",
                 ),
               ),

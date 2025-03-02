@@ -5,7 +5,7 @@ import 'dart:io';
 import '../utils/shared_preferences_helper.dart';
 
 class ApiService {
-  static const String baseUrl = "https://walisantri.ppalmaruf.com/api";
+  static const String baseUrl = "https://siputra.ppalmaruf.com/api";
 
   // Build endpoint URL
   static String _buildUrl(String endpoint) {

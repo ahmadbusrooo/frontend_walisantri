@@ -105,7 +105,7 @@ class _AccountScreenState extends State<AccountScreen> {
             radius: 40,
             backgroundImage: NetworkImage(
               profileData != null && profileData!['student_img'] != null
-                  ? "https://walisantri.ppalmaruf.com/uploads/student/${profileData!['student_img']}"
+                  ? "https://siputra.ppalmaruf.com/uploads/student/${profileData!['student_img']}"
                   : "https://via.placeholder.com/150",
             ),
           ),

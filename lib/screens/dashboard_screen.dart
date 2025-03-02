@@ -258,7 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   backgroundImage: dashboardData != null &&
                                           dashboardData!['student_img'] != null
                                       ? NetworkImage(
-                                          "https://walisantri.ppalmaruf.com/uploads/student/${dashboardData!['student_img']}",
+                                          "https://siputra.ppalmaruf.com/uploads/student/${dashboardData!['student_img']}",
                                         )
                                       : null,
                                   child: dashboardData == null ||
@@ -421,7 +421,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           borderRadius:
                                               BorderRadius.circular(8),
                                           child: Image.network(
-                                            "https://walisantri.ppalmaruf.com/uploads/information/${info['information_img']}",
+                                            "https://siputra.ppalmaruf.com/uploads/information/${info['information_img']}",
                                             width: 70,
                                             height: 70,
                                             fit: BoxFit.cover,
@@ -459,7 +459,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                   'Deskripsi tidak tersedia',
                                           imageUrl: info['information_img'] !=
                                                   null
-                                              ? "https://walisantri.ppalmaruf.com/uploads/information/${info['information_img']}"
+                                              ? "https://siputra.ppalmaruf.com/uploads/information/${info['information_img']}"
                                               : null,
                                           date:
                                               info['information_input_date'] ??
