@@ -8,6 +8,7 @@ import 'Izin_screen.dart';
 import '../services/api_service.dart';
 import 'custom_bottom_navigation_bar.dart';
 import 'information_detail_screen.dart'; // Import layar detail informasi
+import 'information_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,7 +26,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _fetchDashboardData();
   }
-  
+
+  String getGreeting() {
+    // Ambil waktu UTC sekarang dan konversi ke WIB (UTC+7)
+    DateTime now = DateTime.now().toUtc().add(Duration(hours: 7));
+    int hour = now.hour;
+
+    if (hour >= 5 && hour < 10) {
+      return 'Selamat Pagi,';
+    } else if (hour >= 10 && hour < 15) {
+      return 'Selamat Siang,';
+    } else if (hour >= 15 && hour < 19) {
+      return 'Selamat Sore,';
+    } else {
+      return 'Selamat Malam,';
+    }
+  }
+
   String _shortenText(String text, {int maxLength = 50}) {
     if (text.length > maxLength) {
       return text.substring(0, maxLength) + '...';
@@ -125,7 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -163,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                "Selamat Datang",
+                                getGreeting(), // Ganti "Selamat Datang" dengan ini
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -173,11 +190,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Stack(
                                 children: [
                                   IconButton(
-                                    icon: Icon(Icons.notifications, color: Colors.white, size: 28),
+                                    icon: Icon(Icons.notifications,
+                                        color: Colors.white, size: 28),
                                     onPressed: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (context) => NotificationScreen()),
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                NotificationScreen()),
                                       );
                                     },
                                   ),
@@ -218,27 +238,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      dashboardData?['student_full_name'] ?? 'Nama Tidak Tersedia',
+      'Walisantri',
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 18, // Ukuran lebih kecil dari nama
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+                                    Text(
+                                      _shortenText(
+                                        dashboardData?['student_full_name'] ??
+                                            'Nama Tidak Tersedia',
+                                        maxLength:
+                                            15, // Tambahkan parameter ini
+                                      ),
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 25,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    SizedBox(height: 2),
                                     Text(
                                       "NIS : ${dashboardData?['student_nis'] ?? "Tidak Tersedia"}",
                                       style: TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 20,
+                                        fontSize: 17,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    SizedBox(height: 2),
                                     Text(
                                       "Kelas : ${dashboardData?['class_name'] ?? "Tidak Tersedia"}",
                                       style: TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 20,
+                                        fontSize: 17,
                                       ),
                                     ),
                                   ],
@@ -258,7 +291,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   backgroundImage: dashboardData != null &&
                                           dashboardData!['student_img'] != null
                                       ? NetworkImage(
-                                          "https://siputra.ppalmaruf.com/uploads/student/${dashboardData!['student_img']}",
+                                          "http://172.20.10.3/uploads/student/${dashboardData!['student_img']}",
                                         )
                                       : null,
                                   child: dashboardData == null ||
@@ -344,7 +377,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
                         children: [
-                          _buildMenuItem(Icons.payment, 'Pembayaran', () {
+                          _buildMenuItem(Icons.payment, 'Tagihan', () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -388,92 +421,161 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Informasi Section
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Informasi:',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (dashboardData != null &&
-                        dashboardData!['information'] != null)
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Column(
-                          children: List.generate(
-                            dashboardData!['information'].length,
-                            (index) {
-                              final info = dashboardData!['information'][index];
-                              return Card(
-                                margin: EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Informasi:',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
                                 ),
-                                elevation: 4,
-                                child: ListTile(
-                                  leading: info['information_img'] != null
-                                      ? ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          child: Image.network(
-                                            "https://siputra.ppalmaruf.com/uploads/information/${info['information_img']}",
-                                            width: 70,
-                                            height: 70,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        )
-                                      : Icon(Icons.info,
-                                          size: 50, color: Colors.teal),
-                                  title: Text(
-                                    info['information_title'] ??
-                                        'Judul Tidak Tersedia',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    _shortenText(
-                                      info['information_desc']?.replaceAll(
-                                              RegExp(r'<[^>]*>'), '') ??
-                                          'Deskripsi tidak tersedia',
-                                    ),
-                                    style: TextStyle(color: Colors.grey[700]),
-                                  ),
-                                  onTap: () {
+                              ),
+                              if ((dashboardData?['information']?.length ?? 0) >
+                                  3)
+                                TextButton(
+                                  onPressed: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            InformationDetailScreen(
-                                          title: info['information_title'] ??
+                                            InformationScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Lihat Semua',
+                                    style: TextStyle(
+                                      color: Colors.teal,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (dashboardData != null &&
+                              dashboardData!['information'] != null)
+                            Column(
+                              children: [
+                                ...List.generate(
+                                  dashboardData!['information'].length > 3
+                                      ? 3
+                                      : dashboardData!['information'].length,
+                                  (index) {
+                                    final info =
+                                        dashboardData!['information'][index];
+                                    return Card(
+                                      margin:
+                                          EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      elevation: 4,
+                                      child: ListTile(
+                                        leading: info['information_img'] != null
+                                            ? ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: Image.network(
+                                                  "http://172.20.10.3/uploads/information/${info['information_img']}",
+                                                  width: 70,
+                                                  height: 70,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              )
+                                            : Icon(Icons.info,
+                                                size: 50, color: Colors.teal),
+                                        title: Text(
+                                          info['information_title'] ??
                                               'Judul Tidak Tersedia',
-                                          description:
-                                              info['information_desc'] ??
-                                                  'Deskripsi tidak tersedia',
-                                          imageUrl: info['information_img'] !=
-                                                  null
-                                              ? "https://siputra.ppalmaruf.com/uploads/information/${info['information_img']}"
-                                              : null,
-                                          date:
-                                              info['information_input_date'] ??
-                                                  'Tanggal tidak tersedia',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.black87,
+                                          ),
                                         ),
+                                        subtitle: Text(
+                                          _shortenText(
+                                            info['information_desc']
+                                                    ?.replaceAll(
+                                                        RegExp(r'<[^>]*>'),
+                                                        '') ??
+                                                'Deskripsi tidak tersedia',
+                                          ),
+                                          style: TextStyle(
+                                              color: Colors.grey[700]),
+                                        ),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  InformationDetailScreen(
+                                                title:
+                                                    info['information_title'] ??
+                                                        'Judul Tidak Tersedia',
+                                                description: info[
+                                                        'information_desc'] ??
+                                                    'Deskripsi tidak tersedia',
+                                                imageUrl: info[
+                                                            'information_img'] !=
+                                                        null
+                                                    ? "http://172.20.10.3/uploads/information/${info['information_img']}"
+                                                    : null,
+                                                date: info[
+                                                        'information_input_date'] ??
+                                                    'Tanggal tidak tersedia',
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     );
                                   },
                                 ),
-                              );
-                            },
-                          ),
-                        ),
+                                if ((dashboardData?['information']?.length ??
+                                        0) >
+                                    3)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.teal[50],
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  InformationScreen(),
+                                            ),
+                                          );
+                                        },
+                                        child: Text(
+                                          'Lihat Lebih Banyak',
+                                          style: TextStyle(
+                                            color: Colors.teal[700],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               ),

@@ -5,7 +5,7 @@ import 'dart:io';
 import '../utils/shared_preferences_helper.dart';
 
 class ApiService {
-  static const String baseUrl = "https://siputra.ppalmaruf.com/api";
+  static const String baseUrl = "http://172.20.10.3/api";
 
   // Build endpoint URL
   static String _buildUrl(String endpoint) {
@@ -154,11 +154,93 @@ class ApiService {
     }
   }
 
+// ApiService.dart
+static Future<Map<String, dynamic>> fetchTransactionData({
+  int page = 1,
+  int limit = 10,
+}) async {
+  try {
+    final headers = await _getHeaders();
+    final uri = Uri.parse(_buildUrl("transaction")).replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: headers,
+    );
+
+    print('Transaction API Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to fetch transactions: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Transaction Data: $e');
+    throw Exception('Error Fetching Transaction Data: $e');
+  }
+}
   // Fetch Student Data
   static Future<Map<String, dynamic>> fetchStudentData() async {
     return await _fetchWithRetry("profile");
   }
 
+  static Future<Map<String, dynamic>> fetchInformationData({
+  int page = 1,
+  int limit = 10,
+}) async {
+  try {
+    final headers = await _getHeaders();
+    final uri = Uri.parse(_buildUrl("information")).replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: headers,
+    );
+
+    print('Respons API [information]: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data informasi: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Information Data: $e');
+    throw Exception('Error Fetching Information Data: $e');
+  }
+}
+
+static Future<Map<String, dynamic>> fetchInformationDetails(int informationId) async {
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse(_buildUrl("information/$informationId")),
+      headers: headers,
+    );
+
+    print('Respons API [information details]: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Gagal mengambil detail informasi: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Information Details: $e');
+    throw Exception('Error Fetching Information Details: $e');
+  }
+}
   // Fetch Dashboard Data
   static Future<Map<String, dynamic>> fetchDashboardData() async {
     try {

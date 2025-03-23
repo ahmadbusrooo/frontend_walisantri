@@ -69,7 +69,28 @@ class SharedPreferencesHelper {
       print('[SharedPreferencesHelper] Gagal menghapus token FCM: $e');
     }
   }
+static const String _keyIsFirstInstall = 'isFirstInstall';
+static const String _keyIsTutorialShown = 'isTutorialShown';
 
+static Future<bool> isFirstInstall() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool(_keyIsFirstInstall) ?? true;
+}
+
+static Future<void> setFirstInstall(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_keyIsFirstInstall, value);
+}
+
+static Future<bool> isTutorialShown() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool(_keyIsTutorialShown) ?? false;
+}
+
+static Future<void> setTutorialShown(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_keyIsTutorialShown, value);
+}
   // 🔹 Simpan status login
   static Future<void> setLoggedIn(bool value) async {
     try {

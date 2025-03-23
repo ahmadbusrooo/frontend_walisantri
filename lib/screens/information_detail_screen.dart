@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 class InformationDetailScreen extends StatelessWidget {
   final String title;
@@ -6,7 +7,8 @@ class InformationDetailScreen extends StatelessWidget {
   final String? imageUrl;
   final String date;
 
-  InformationDetailScreen({
+  const InformationDetailScreen({
+    super.key,
     required this.title,
     required this.description,
     this.imageUrl,
@@ -17,7 +19,7 @@ class InformationDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Detail Informasi',
           style: TextStyle(
             fontWeight: FontWeight.bold,
@@ -26,42 +28,39 @@ class InformationDetailScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.teal,
         centerTitle: true,
-        iconTheme: IconThemeData(
-          color: Colors.white, // Mengubah warna tombol back menjadi putih
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Informasi dengan padding dan rounded corners
             if (imageUrl != null)
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16), // Rounded corners
+                  borderRadius: BorderRadius.circular(16),
                   child: Image.network(
                     imageUrl!,
-                    fit: BoxFit.contain, // Menampilkan ukuran asli gambar
+                    fit: BoxFit.cover,
                     width: double.infinity,
+                    
                   ),
                 ),
               ),
-            // Konten Informasi
             Padding(
-              padding: const EdgeInsets.all(16.0), // Sama dengan padding gambar
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     date,
                     style: TextStyle(
@@ -69,14 +68,34 @@ class InformationDetailScreen extends StatelessWidget {
                       color: Colors.grey[700],
                     ),
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    description.replaceAll(RegExp(r'<[^>]*>'), ''),
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      color: Colors.black87,
-                    ),
+                  const SizedBox(height: 16),
+                  Html(
+                    data: description,
+                    style: {
+                      "body": Style(
+                        fontSize: FontSize(16.0),
+                        lineHeight: const LineHeight(1.5),
+                        color: Colors.black87,
+                      ),
+                      "p": Style(
+                        margin: Margins.only(bottom: 12),
+                      ),
+                      "ul": Style(
+                        margin: Margins.only(left: 20, bottom: 12),
+                      ),
+                      "ol": Style(
+                        margin: Margins.only(left: 20, bottom: 12),
+                      ),
+                      "li": Style(
+                        padding: HtmlPaddings.only(bottom: 4),
+                      ),
+                      "strong": Style(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      "em": Style(
+                        fontStyle: FontStyle.italic,
+                      ),
+                    },
                   ),
                 ],
               ),

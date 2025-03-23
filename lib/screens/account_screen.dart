@@ -45,6 +45,7 @@ class _AccountScreenState extends State<AccountScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.teal,
+        iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
       ),
       body: isLoading
@@ -105,7 +106,7 @@ class _AccountScreenState extends State<AccountScreen> {
             radius: 40,
             backgroundImage: NetworkImage(
               profileData != null && profileData!['student_img'] != null
-                  ? "https://siputra.ppalmaruf.com/uploads/student/${profileData!['student_img']}"
+                  ? "http://172.20.10.3/uploads/student/${profileData!['student_img']}"
                   : "https://via.placeholder.com/150",
             ),
           ),
