@@ -4,14 +4,23 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../utils/shared_preferences_helper.dart';
 
-class ApiService {
-  static const String baseUrl = "http://172.20.10.3/api";
 
-  // Build endpoint URL
+class ApiService {
+  static String baseUrl = "https://siputri.ppalmaruf.com/api";
+
+  static void setBaseUrl(String unit) {
+    if (unit == 'putra') {
+      baseUrl = "https://siputra.ppalmaruf.com/api";
+    } else {
+      baseUrl = "https://siputri.ppalmaruf.com/api";
+    }
+    print('Base URL diubah ke: $baseUrl');
+  }
+
+  // Pindahkan ini ke bagian atas class
   static String _buildUrl(String endpoint) {
     return "$baseUrl/$endpoint";
   }
-
   // General headers with token
   static Future<Map<String, String>> _getHeaders() async {
     final token = await SharedPreferencesHelper.getToken();
@@ -285,6 +294,26 @@ static Future<Map<String, dynamic>> fetchInformationDetails(int informationId) a
     }
   }
 
+static Future<Map<String, dynamic>> fetchIzinData() async {
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse(_buildUrl("izin")),
+      headers: headers,
+    );
+
+    print('Respons API [izin]: ${response.body}'); // Debug log
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data izin: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Izin Data: $e');
+    throw Exception('Error Fetching Izin Data: $e');
+  }
+}
   // Fetch Health Data
   static Future<Map<String, dynamic>> fetchHealthData() async {
     return await _fetchWithRetry("health");
@@ -325,6 +354,78 @@ static Future<Map<String, dynamic>> fetchInformationDetails(int informationId) a
   }
 }
 
+
+// Tambahkan method ini di dalam class ApiService
+
+// Get all amalan
+static Future<Map<String, dynamic>> fetchAmalanData() async {
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse(_buildUrl("amalan")),
+      headers: headers,
+    );
+
+    print('Respons API [amalan]: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data amalan: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Amalan Data: $e');
+    throw Exception('Error Fetching Amalan Data: $e');
+  }
+}
+
+// Get bab by amalan_id
+static Future<Map<String, dynamic>> fetchBabData(String amalanId) async {
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse(_buildUrl("bab?amalan_id=$amalanId")),
+      headers: headers,
+    );
+
+    print('Bab API Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to fetch bab: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Bab Data: $e');
+    throw Exception('Error Fetching Bab Data: $e');
+  }
+}
+
+// Get isi bab by bab_id
+static Future<Map<String, dynamic>> fetchIsiData(int babId, {String languageCode = 'en'}) async {
+  try {
+    final headers = await _getHeaders();
+    final uri = Uri.parse(_buildUrl("isi")).replace(
+      queryParameters: {'bab_id': babId.toString()},
+    );
+
+    final response = await http.get(
+      uri,
+      headers: headers,
+    );
+
+    print('Respons API [isi]: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data isi bab: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error Fetching Isi Data: $e');
+    throw Exception('Error Fetching Isi Data: $e');
+  }
+}
   // Generalized function to fetch with retry
   static Future<Map<String, dynamic>> _fetchWithRetry(String endpoint) async {
     const int maxRetries = 3;

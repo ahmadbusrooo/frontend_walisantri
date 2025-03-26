@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class ProfileDetailScreen extends StatelessWidget {
   final Map<String, dynamic> profileData;
@@ -75,8 +76,8 @@ class ProfileDetailScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(290),
+          bottomLeft: Radius.circular(25),
+          bottomRight: Radius.circular(25),
         ),
         image: DecorationImage(
           image: AssetImage('assets/icon/logoaula.png'),
@@ -114,7 +115,8 @@ class ProfileDetailScreen extends StatelessWidget {
                 radius: isWideScreen ? 60 : 50,
                 backgroundImage: NetworkImage(
                   profileData['student_img'] != null
-                      ? "http://172.20.10.3/uploads/student/${profileData['student_img']}"
+                                       ? "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/student/${profileData!['student_img']}"
+
                       : "https://via.placeholder.com/150",
                 ),
               ),

@@ -1,19 +1,46 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:intl/intl.dart';
 
-class Izinscrenn extends StatefulWidget {
-  @override
-  _IzinscrennState createState() => _IzinscrennState();
+String formatTanggal(String? tanggal) {
+  if (tanggal == null || tanggal.isEmpty) return 'Tanggal tidak tersedia';
+
+  try {
+    // Try parsing with the format from your JSON (e.g., "01 March 2025")
+    DateTime parsedDate = DateFormat('dd MMMM yyyy').parse(tanggal.trim());
+    return DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(parsedDate);
+  } catch (e) {
+    // If that fails, try standard DateTime.parse
+    try {
+      DateTime parsedDate = DateTime.parse(tanggal.trim());
+      return DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(parsedDate);
+    } catch (e) {
+      return 'Format tidak valid';
+    }
+  }
 }
 
-class _IzinscrennState extends State<Izinscrenn> {
+class IzinScreen extends StatefulWidget {
+  const IzinScreen({super.key});
+
+  @override
+  IzinScreenState createState() => IzinScreenState();
+}
+
+class IzinScreenState extends State<IzinScreen> {
   bool _isLoading = true;
   List<dynamic> _periods = [];
+  List<dynamic> _izinData = [];
   String? _selectedPeriodId;
-  List<dynamic> _violations = [];
-  int _totalViolations = 0;
   String _studentName = "Tidak Diketahui";
   String _className = "Tidak Diketahui";
+  Map<String, dynamic> _stats = {
+    'total_izin': 0,
+    'total_hari': 0,
+    'total_telat': 0,
+    'total_tepat_waktu': 0,
+  };
+  List<dynamic> _rekapBulanan = [];
 
   @override
   void initState() {
@@ -23,63 +50,41 @@ class _IzinscrennState extends State<Izinscrenn> {
 
   Future<void> _fetchPeriodsAndData() async {
     try {
-      final response = await ApiService.fetchViolationData();
+      final response = await ApiService.fetchIzinData();
       if (response['status']) {
         setState(() {
-          _periods = response['data'].map((period) => period['period']).toList();
+          _periods = response['data'];
           final activePeriod = _periods.firstWhere(
-            (period) => period['status'] == '1',
+            (period) => period['period']['status'].toString() == '1',
             orElse: () => _periods.isNotEmpty ? _periods[0] : null,
           );
-          _selectedPeriodId = activePeriod != null ? activePeriod['period_id'] : null;
-        });
-        _fetchViolationData(_selectedPeriodId);
-      } else {
-        throw Exception(response['message']);
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  Future<void> _fetchViolationData(String? periodId) async {
-    if (periodId == null) return;
-
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-      final response = await ApiService.fetchViolationData();
-      if (response['status']) {
-        final selectedPeriodData = response['data'].firstWhere(
-          (period) => period['period']['period_id'] == periodId,
-          orElse: () => null,
-        );
-
-        setState(() {
-          _violations = selectedPeriodData != null ? selectedPeriodData['pelanggaran'] : [];
- _totalViolations = selectedPeriodData['total_pelanggaran'] is int
-    ? selectedPeriodData['total_pelanggaran']
-    : int.tryParse(selectedPeriodData['total_pelanggaran'] ?? '0') ?? 0;
-          _studentName = selectedPeriodData?['student']?['full_name'] ?? "Tidak Diketahui";
-          _className = selectedPeriodData?['student']?['class_name'] ?? "Tidak Diketahui";
+          _selectedPeriodId = activePeriod?['period']['period_id'];
+          _updateSelectedPeriodData();
           _isLoading = false;
         });
       } else {
         throw Exception(response['message']);
       }
     } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorSnackbar(e.toString());
+    }
+  }
+
+  void _updateSelectedPeriodData() {
+    final selectedPeriod = _periods.firstWhere(
+      (period) => period['period']['period_id'] == _selectedPeriodId,
+      orElse: () => null,
+    );
+
+    if (selectedPeriod != null) {
       setState(() {
-        _isLoading = false;
+        _izinData = selectedPeriod['detail_izin'] ?? [];
+        _stats = selectedPeriod['statistik'] ?? {};
+        // _rekapBulanan = selectedPeriod['rekap_bulanan'] ?? [];
+        _studentName = selectedPeriod['student']['full_name'] ?? "Tidak Diketahui";
+        _className = selectedPeriod['student']['class_name'] ?? "Tidak Diketahui";
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
     }
   }
 
@@ -95,7 +100,10 @@ class _IzinscrennState extends State<Izinscrenn> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             gradient: LinearGradient(
-              colors: [const Color.fromARGB(255, 255, 255, 255), const Color.fromARGB(255, 255, 255, 255)],
+              colors: [
+                const Color.fromARGB(255, 255, 255, 255),
+                const Color.fromARGB(255, 255, 255, 255)
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -125,13 +133,14 @@ class _IzinscrennState extends State<Izinscrenn> {
                 child: ListView.builder(
                   itemCount: _periods.length,
                   itemBuilder: (context, index) {
-                    final period = _periods[index];
+                    final period = _periods[index]['period'];
                     final isSelected = _selectedPeriodId == period['period_id'];
                     return ListTile(
                       contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       tileColor: isSelected ? Colors.teal.shade100 : null,
                       leading: CircleAvatar(
-                        backgroundColor: isSelected ? Colors.teal : Colors.teal.shade100,
+                        backgroundColor:
+                            isSelected ? Colors.teal : Colors.teal.shade100,
                         child: Icon(Icons.calendar_today, color: Colors.white),
                       ),
                       title: Text(
@@ -139,7 +148,9 @@ class _IzinscrennState extends State<Izinscrenn> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.teal.shade900 : Colors.black87,
+                          color: isSelected
+                              ? Colors.teal.shade900
+                              : Colors.black87,
                         ),
                       ),
                       trailing: isSelected
@@ -147,10 +158,8 @@ class _IzinscrennState extends State<Izinscrenn> {
                           : null,
                       onTap: () {
                         Navigator.pop(context);
-                        setState(() {
-                          _selectedPeriodId = period['period_id'];
-                        });
-                        _fetchViolationData(period['period_id']);
+                        setState(() => _selectedPeriodId = period['period_id']);
+                        _updateSelectedPeriodData();
                       },
                     );
                   },
@@ -163,303 +172,474 @@ class _IzinscrennState extends State<Izinscrenn> {
     );
   }
 
-  void _showViolationDetails(dynamic violation) {
+  void _showIzinDetails(dynamic izin) {
+    final statusColor = _getStatusColor(izin['status']);
+
     showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 50,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.event_note,
+                        color: Colors.teal[600], size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        izin['alasan'] ?? 'Alasan tidak diketahui',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                _buildDetailSection(
+                  icon: Icons.calendar_month_rounded,
+                  children: [
+                    _buildDetailItem(
+                      'Tanggal Mulai',
+                      formatTanggal(izin['tanggal_mulai']),
+                    ),
+                    _buildDetailItem(
+                      'Tanggal Akhir',
+                      formatTanggal(izin['tanggal_akhir']),
+                    ),
+                    _buildDetailItem(
+                      'Jumlah Hari',
+                      '${izin['jumlah_hari']} hari',
+                    ),
+                  ],
+                ),
+                Divider(height: 32, color: Colors.grey[200]),
+                _buildDetailSection(
+                  icon: Icons.assignment_turned_in_rounded,
+                  children: [
+                    _buildDetailItem(
+                      'Status',
+                      izin['status'],
+                      valueColor: statusColor,
+                    ),
+                    _buildDetailItem(
+                      'Status Aktif',
+                      izin['status_aktif'] ?? '-',
+                    ),
+                  ],
+                ),
+                SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.teal,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Tutup', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
             ),
           ),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  violation['title'] ?? 'Unknown Title',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: const Color.fromARGB(255, 10, 14, 14),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.gavel,
-                color: Colors.teal,
-                size: 28,
-              ),
-            ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(
+      {required IconData icon, required List<Widget> children}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.teal[300]),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
           ),
-          SizedBox(height: 15),
-          Divider(color: Colors.grey[300], thickness: 1),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Deskripsi :',
-                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              ),
-              Text(
-                violation['description'] ?? 'Tidak ada deskripsi',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Tanggal :',
-                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              ),
-              Text(
-                violation['date'] ?? 'Tidak diketahui',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
+          SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              color: valueColor ?? Colors.teal[900],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Point :',
-                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              ),
-              Text(
-                violation['points'] ?? '0',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Catatan :',
-                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              ),
-              Expanded(
-                child: Text(
-                  violation['notes'] ?? 'Tidak ada catatan',
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 110),
-          
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Color? _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'terlambat':
+        return Colors.orange[700];
+      case 'tepat waktu':
+        return Colors.green[700];
+      default:
+        return Colors.teal[800];
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $message')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Data Perizinan',
+          'Data Izin Pulang',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 20,
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.teal,
-        elevation: 4,
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set icon color to white
-        ),
+        backgroundColor: Colors.teal[700],
+        elevation: 2,
+        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 10.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
               onTap: _showPeriodSelector,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(72, 75, 121, 119),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
+                  color: Colors.teal[600],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54, width: 1),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(Icons.calendar_month, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
                     Text(
                       _selectedPeriodId != null
-                          ? _periods.firstWhere((period) => period['period_id'] == _selectedPeriodId)['period_start'] +
-                              ' - ' +
-                              _periods.firstWhere((period) => period['period_id'] == _selectedPeriodId)['period_end']
-                          : 'Periode',
+                          ? '${_periods.firstWhere((p) => p['period']['period_id'] == _selectedPeriodId)['period']['period_start']}/${_periods.firstWhere((p) => p['period']['period_id'] == _selectedPeriodId)['period']['period_end']}'
+                          : 'Pilih Periode',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: const Color.fromARGB(255, 255, 255, 255),
+                        color: Colors.white,
                       ),
                     ),
-                    Icon(Icons.arrow_drop_down, color: const Color.fromARGB(255, 255, 255, 255)),
                   ],
                 ),
               ),
             ),
           ),
         ],
-        
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Colors.teal))
           : Column(
               children: [
-                SizedBox(height: 20),
-                 Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-  child: Container(
-    padding: EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.teal.shade700,
-          Colors.teal.shade400,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black26,
-          blurRadius: 10,
-          spreadRadius: 2,
-          offset: Offset(4, 6), // Efek bayangan halus ke bawah dan ke kanan
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Baris pertama: Nama siswa, kelas, dan ikon di pojok kanan atas
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _studentName,
-                  style: TextStyle(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.bold, 
-                    color: Colors.white,
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _studentName,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.teal[900],
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      _className,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.assignment_late,
+                                  color: Colors.teal[200], size: 32),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: Colors.grey[200]!),
+                                bottom: BorderSide(color: Colors.grey[200]!),
+                              ),
+                            ),
+                            child: GridView.count(
+                              shrinkWrap: true,
+                              crossAxisCount: 2,
+                              childAspectRatio: 2.5,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              padding: const EdgeInsets.all(4),
+                              children: [
+                                _buildStatItem('Total Izin', _stats['total_izin']),
+                                _buildStatItem('Total Hari', _stats['total_hari']),
+                                _buildStatItem('Terlambat', _stats['total_telat']),
+                                _buildStatItem('Tepat Waktu', _stats['total_tepat_waktu']),
+                              ],
+                            ),
+                          ),
+                          if (_rekapBulanan.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            Text(
+                              "Rekap Bulanan",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.teal[800],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Column(
+                              children: _rekapBulanan.map((rekap) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        rekap['bulan'] ?? "Bulan tidak diketahui",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      Text(
+                                        "${rekap['total_hari']} hari",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.teal[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  _className,
-                  style: TextStyle(
-                    fontSize: 16, 
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-            Icon(Icons.gavel, color: Colors.white, size: 36), // Ikon di pojok kanan atas
-          ],
-        ),
-        SizedBox(height: 12),
-
-        // Total Hafalan
-        Text(
-          '$_totalViolations Hari Pulang',
-          style: TextStyle(
-            fontSize: 24, 
-            fontWeight: FontWeight.bold, 
-            color: Colors.white,
-          ),
-        ),
-        SizedBox(height: 6),
-
-        // Kitab Hafalan
-        
-      ],
-    ),
-  ),
-),
-               SizedBox(height: 11),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _violations.length,
-                    itemBuilder: (context, index) {
-                      final violation = _violations[index];
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 2,
-                        child: ListTile(
-                          title: Text(
-                            violation['title'] ?? 'Unknown Title',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
+                  child: _izinData.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inbox,
+                                  size: 48, color: Colors.grey[400]),
+                              SizedBox(height: 16),
+                              Text(
+                                "Belum ada riwayat izin",
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            ],
                           ),
-                          subtitle: Text(
-                            violation['date'] ?? 'Tidak diketahui',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        trailing: Icon(Icons.info_outline, color: Colors.teal),
-                                onTap: () => _showViolationDetails(violation),
+                        )
+                      : ListView.separated(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _izinData.length,
+                          separatorBuilder: (_, __) => SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final izin = _izinData[index];
+                            final bool isTerlambat = izin['status'] == 'Terlambat';
+                            return Card(
+                              elevation: 0,
+                              color: isTerlambat
+                                  ? Colors.orange[50]
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: isTerlambat
+                                      ? Colors.orange[100]!
+                                      : Colors.grey[200]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                leading: Container(
+                                  padding: EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isTerlambat
+                                        ? Colors.orange[100]
+                                        : Colors.teal.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.event_note,
+                                    size: 20,
+                                    color: isTerlambat
+                                        ? Colors.orange[600]
+                                        : Colors.teal[600],
+                                  ),
+                                ),
+                                title: Text(
+                                  izin['alasan'] ?? 'Alasan tidak diketahui',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: isTerlambat
+                                        ? Colors.orange[800]
+                                        : Colors.teal[800],
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        formatTanggal(izin['tanggal_mulai']),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isTerlambat
+                                              ? Colors.orange[600]
+                                              : Colors.grey[600],
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        "${izin['jumlah_hari']} hari",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                trailing: Icon(Icons.chevron_right_rounded,
+                                    color: Colors.grey[400]),
+                                onTap: () => _showIzinDetails(izin),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildStatItem(String title, dynamic value) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 2),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.teal[800],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

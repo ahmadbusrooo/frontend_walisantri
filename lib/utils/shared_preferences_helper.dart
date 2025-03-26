@@ -6,7 +6,29 @@ class SharedPreferencesHelper {
   static const String _tokenKey = 'token'; // Token autentikasi
   static const String _fcmTokenKey = 'fcm_token'; // Token FCM
   static const String _loggedInKey = 'loggedIn';
+static const String _selectedUnitKey = 'selected_unit';
 
+// Simpan unit yang dipilih
+static Future<void> saveSelectedUnit(String unit) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedUnitKey, unit);
+    print('[SharedPreferencesHelper] Unit berhasil disimpan: $unit');
+  } catch (e) {
+    print('[SharedPreferencesHelper] Gagal menyimpan unit: $e');
+  }
+}
+
+// Ambil unit yang disimpan
+static Future<String?> getSelectedUnit() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_selectedUnitKey);
+  } catch (e) {
+    print('[SharedPreferencesHelper] Gagal mengambil unit: $e');
+    return null;
+  }
+}
   // Inisialisasi SharedPreferences saat aplikasi dimulai
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();

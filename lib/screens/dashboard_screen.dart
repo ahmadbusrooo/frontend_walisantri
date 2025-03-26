@@ -4,7 +4,8 @@ import 'health_screen.dart';
 import 'nadzhaman_screen.dart';
 import 'payment_screen.dart';
 import 'notification_screen.dart';
-import 'Izin_screen.dart';
+import 'izin_screen.dart';
+import 'kitablist_screen.dart';
 import '../services/api_service.dart';
 import 'custom_bottom_navigation_bar.dart';
 import 'information_detail_screen.dart'; // Import layar detail informasi
@@ -287,19 +288,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 child: CircleAvatar(
-                                  radius: 44,
-                                  backgroundImage: dashboardData != null &&
-                                          dashboardData!['student_img'] != null
-                                      ? NetworkImage(
-                                          "http://172.20.10.3/uploads/student/${dashboardData!['student_img']}",
-                                        )
-                                      : null,
-                                  child: dashboardData == null ||
-                                          dashboardData!['student_img'] == null
-                                      ? Icon(Icons.person,
-                                          size: 40, color: Colors.white)
-                                      : null,
-                                ),
+  radius: 44,
+  backgroundImage: dashboardData != null &&
+          dashboardData!['student_img'] != null
+      ? NetworkImage(
+          "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/student/${dashboardData!['student_img']}",
+        )
+      : null,
+  child: dashboardData == null ||
+          dashboardData!['student_img'] == null
+      ? Icon(Icons.person,
+          size: 40, color: Colors.white)
+      : null,
+),
                               ),
                             ],
                           ),
@@ -390,13 +391,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   builder: (context) => NadzhamanScreen()),
                             );
                           }),
-                          _buildMenuItem(
-                              Icons.menu_book, "Majmu'", _showComingSoon),
-                          _buildMenuItem(Icons.bed, 'Izin', () {
+                          _buildMenuItem(Icons.menu_book, "Kitab",() {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => Izinscrenn()),
+                                  builder: (context) => KitablistScreen()),
+                            );
+                          }),
+                          _buildMenuItem(Icons.bed, 'Izin Pulang', () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => IzinScreen()),
                             );
                           }),
                           _buildMenuItem(Icons.people, 'Pelanggaran', () {
@@ -478,15 +484,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       child: ListTile(
                                         leading: info['information_img'] != null
                                             ? ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                child: Image.network(
-                                                  "http://172.20.10.3/uploads/information/${info['information_img']}",
-                                                  width: 70,
-                                                  height: 70,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              )
+  borderRadius: BorderRadius.circular(8),
+  child: Image.network(
+    "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/information/${info['information_img']}",
+    width: 70,
+    height: 70,
+    fit: BoxFit.cover,
+  ),
+)
                                             : Icon(Icons.info,
                                                 size: 50, color: Colors.teal),
                                         title: Text(
@@ -524,7 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                 imageUrl: info[
                                                             'information_img'] !=
                                                         null
-                                                    ? "http://172.20.10.3/uploads/information/${info['information_img']}"
+                                                    ? "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/information/${info['information_img']}"
                                                     : null,
                                                 date: info[
                                                         'information_input_date'] ??

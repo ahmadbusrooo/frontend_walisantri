@@ -32,15 +32,35 @@ class _LoginScreenState extends State<LoginScreen> {
   OverlayEntry? _tutorialOverlay;
   final GlobalKey _nisFieldKey = GlobalKey();
   final GlobalKey _passwordFieldKey = GlobalKey();
+  String? _selectedUnit; // 'putra' atau 'putri'
+
+bool _validateUnit() {
+    if (_selectedUnit == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pilih unit pondok terlebih dahulu')),
+      );
+      return false;
+    }
+    return true;
+  }
 
   @override
   void initState() {
     super.initState();
+    _loadSavedUnit();
     _getDeviceInfo();
     _getFcmToken();
     _checkFirstInstall(); // Tambahkan ini
   }
-
+Future<void> _loadSavedUnit() async {
+    final savedUnit = await SharedPreferencesHelper.getSelectedUnit();
+    if (savedUnit != null) {
+      setState(() {
+        _selectedUnit = savedUnit;
+      });
+      ApiService.setBaseUrl(savedUnit); // Set base URL sesuai yang disimpan
+    }
+  }
   // TAMBAHKAN METHOD-METHOD BARU INI
   void _checkFirstInstall() async {
     bool firstInstall = await SharedPreferencesHelper.isFirstInstall();
@@ -359,6 +379,12 @@ Future<void> _launchWhatsApp() async {
 
   // Fungsi untuk validasi input sebelum login
   bool _validateInput() {
+    if (_selectedUnit == null) { // Pindahkan validasi unit ke sini
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Pilih unit pondok terlebih dahulu')),
+    );
+    return false;
+  }
     if (_nisController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('NIS tidak boleh kosong')),
@@ -375,8 +401,8 @@ Future<void> _launchWhatsApp() async {
   }
 
   Future<void> _login() async {
-    if (!_validateInput()) return;
-
+  if (!_validateUnit() || !_validateInput()) return;
+ApiService.setBaseUrl(_selectedUnit!);
     setState(() {
       _isLoading = true;
     });
@@ -400,6 +426,7 @@ Future<void> _launchWhatsApp() async {
 
         await SharedPreferencesHelper.saveToken(token);
         await SharedPreferencesHelper.setLoggedIn(true);
+        await SharedPreferencesHelper.saveSelectedUnit(_selectedUnit!);
 
         Navigator.pushReplacement(
           context,
@@ -499,6 +526,7 @@ Future<void> _launchWhatsApp() async {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(height: 50),
+                   
                     // TAMBAHKAN COMPOSITED TRANSFORM TARGET
                     CompositedTransformTarget(
                       link: _nisLayerLink,
@@ -578,7 +606,61 @@ Future<void> _launchWhatsApp() async {
                         ),
                       ),
                     ),
-                    SizedBox(height: 5),
+                    SizedBox(height: 20),
+                     Container(
+  decoration: BoxDecoration(
+    border: Border.all(color: Colors.grey[300]!),
+    borderRadius: BorderRadius.circular(12),
+  ),
+  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Pilih Unit Pondok',
+        style: TextStyle(
+          color: Colors.grey[600],
+          fontSize: 12,
+        ),
+      ),
+      Row(
+        children: [
+          Expanded(
+            child: RadioListTile<String>(
+              title: Text('Putra'),
+              value: 'putra',
+              groupValue: _selectedUnit,
+              onChanged: (value) {
+                setState(() {
+                  _selectedUnit = value;
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              activeColor: Colors.teal,
+            ),
+          ),
+          Expanded(
+            child: RadioListTile<String>(
+              title: Text('Putri'),
+              value: 'putri',
+              groupValue: _selectedUnit,
+              onChanged: (value) {
+                setState(() {
+                  _selectedUnit = value;
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              activeColor: Colors.teal,
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+),
+SizedBox(height: 5),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(

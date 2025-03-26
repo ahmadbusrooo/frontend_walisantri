@@ -9,6 +9,7 @@ import 'utils/shared_preferences_helper.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'services/api_service.dart';
 
 // Inisialisasi notifikasi lokal
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -37,6 +38,11 @@ void main() async {
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
+
+  final savedUnit = await SharedPreferencesHelper.getSelectedUnit();
+  if (savedUnit != null) {
+    ApiService.setBaseUrl(savedUnit);
+  }
 
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,

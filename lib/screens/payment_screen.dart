@@ -88,10 +88,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _showErrorSnackbar(e.toString());
     }
+  }
+
+  void _showErrorSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $message')),
+    );
   }
 
   List<dynamic> _filterDataByPeriod(List<dynamic> data, String? periodId) {
@@ -128,7 +133,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 width: 50,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 40, 51, 50),
+                  color: const Color.fromARGB(255, 130, 155, 153),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -138,7 +143,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: const Color.fromARGB(255, 45, 47, 47),
+                  color: const Color.fromARGB(255, 0, 0, 0),
                 ),
               ),
               SizedBox(height: 16),
@@ -188,179 +193,160 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _showPaymentDetails(dynamic payment, bool isMonthly) {
     final numberFormat = NumberFormat.decimalPattern('id');
+    final statusColor = isMonthly 
+        ? (payment['status'] == '1' ? Colors.green[700] : Colors.orange[700])
+        : ((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0) <= 0
+            ? Colors.green[700] : Colors.orange[700]);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Judul
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    payment['pos_name'] ?? 'Tagihan',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.receipt_long,
-                  color: Colors.teal,
-                  size: 28,
-                ),
-              ],
-            ),
-            SizedBox(height: 15),
-            Divider(color: Colors.grey[300], thickness: 1),
-            SizedBox(height: 10),
-
-            // Jumlah Tagihan (Untuk kedua jenis)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Jumlah Tagihan:',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                ),
-                Text(
-                  'Rp ${numberFormat.format(int.tryParse(payment['bill'].toString()) ?? 0)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-
-            if (isMonthly) ...[
-              // Untuk pembayaran bulanan
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Status:',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  Text(
-                    payment['status'] == '1' ? 'Lunas' : 'Belum Lunas',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color:
-                          payment['status'] == '1' ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Tanggal Bayar:',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  Text(
-                    formatTanggal(payment['date_pay']),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              // Untuk pembayaran bebas
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Terbayar:',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  Text(
-                    'Rp ${numberFormat.format(int.tryParse(payment['total_pay'].toString()) ?? 0)}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Sisa Pembayaran:',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  Text(
-                    'Rp ${numberFormat.format((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0))}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: ((int.tryParse(payment['bill'].toString()) ?? 0) -
-                                  (int.tryParse(
-                                          payment['total_pay'].toString()) ??
-                                      0)) >
-                              0
-                          ? Colors.red
-                          : Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Terakhir Diupdate:',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  Text(
-                    formatTanggal(payment['last_update']),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            SizedBox(height: 100),
-          ],
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.receipt_long, color: Colors.teal[600], size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        payment['pos_name'] ?? 'Tagihan',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                _buildDetailSection(
+                  icon: Icons.payment,
+                  children: [
+                    _buildDetailItem(
+                      'Jumlah Tagihan',
+                      'Rp ${numberFormat.format(int.tryParse(payment['bill'].toString()) ?? 0)}',
+                    ),
+                    if (isMonthly) ...[
+                      _buildDetailItem(
+                        'Status',
+                        payment['status'] == '1' ? 'Lunas' : 'Belum Lunas',
+                        valueColor: statusColor,
+                      ),
+                      _buildDetailItem(
+                        'Tanggal Bayar',
+                        formatTanggal(payment['date_pay']),
+                      ),
+                      if (!isMonthly && payment['month_name'] != null)
+                        _buildDetailItem(
+                          'Bulan',
+                          payment['month_name'],
+                        ),
+                    ] else ...[
+                      _buildDetailItem(
+                        'Terbayar',
+                        'Rp ${numberFormat.format(int.tryParse(payment['total_pay'].toString()) ?? 0)}',
+                      ),
+                      _buildDetailItem(
+                        'Sisa Pembayaran',
+                        'Rp ${numberFormat.format((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0))}',
+                        valueColor: ((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0)) > 0
+                            ? Colors.red[600]
+                            : Colors.green[600],
+                      ),
+                      _buildDetailItem(
+                        'Terakhir Diupdate',
+                        formatTanggal(payment['last_update']),
+                      ),
+                    ],
+                  ],
+                ),
+                SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.teal,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Tutup', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSection({required IconData icon, required List<Widget> children}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.teal[300]),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              color: valueColor ?? Colors.teal[900],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -377,50 +363,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
         title: Text(
           'Data Pembayaran',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 20,
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.teal,
-        elevation: 4,
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set icon color to white
-        ),
+        backgroundColor: Colors.teal[700],
+        elevation: 2,
+        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 10.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
               onTap: _showPeriodSelector,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(72, 75, 121, 119),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: const Color.fromARGB(255, 255, 255, 255)),
+                  color: Colors.teal[600],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54, width: 1),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(Icons.calendar_month, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
                     Text(
                       _selectedPeriod != null
-                          ? _periods.firstWhere((period) =>
-                                  period['period_id'] ==
-                                  _selectedPeriod)['period_start'] +
-                              ' - ' +
-                              _periods.firstWhere((period) =>
-                                  period['period_id'] ==
-                                  _selectedPeriod)['period_end']
-                          : 'Periode',
+                          ? '${_periods.firstWhere((period) => period['period_id'] == _selectedPeriod)['period_start']}/${_periods.firstWhere((period) => period['period_id'] == _selectedPeriod)['period_end']}'
+                          : 'Pilih Periode',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: const Color.fromARGB(255, 255, 255, 255),
+                        color: Colors.white,
                       ),
                     ),
-                    Icon(Icons.arrow_drop_down,
-                        color: const Color.fromARGB(255, 255, 255, 255)),
                   ],
                 ),
               ),
@@ -429,7 +404,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Colors.teal))
           : Column(
               children: [
                 Expanded(
@@ -437,14 +412,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     length: 2,
                     child: Column(
                       children: [
-                        TabBar(
-                          labelColor: Colors.teal,
-                          unselectedLabelColor: Colors.grey,
-                          indicatorColor: Colors.teal,
-                          tabs: [
-                            Tab(text: 'Bulanan'),
-                            Tab(text: 'Bebas'),
-                          ],
+                        Container(
+                          color: Colors.white,
+                          child: TabBar(
+                            labelColor: Colors.teal[700],
+                            unselectedLabelColor: Colors.grey[600],
+                            indicatorColor: Colors.teal[700],
+                            indicatorWeight: 3,
+                            labelStyle: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                            tabs: [
+                              Tab(text: 'Bulanan'),
+                              Tab(text: 'Bebas'),
+                            ],
+                          ),
                         ),
                         Expanded(
                           child: TabBarView(
@@ -467,35 +450,84 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final numberFormat = NumberFormat.decimalPattern('id');
 
     return payments.isEmpty
-        ? Center(child: Text('Tidak ada data pembayaran bulanan.'))
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  "Belum ada data pembayaran bulanan",
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          )
         : ListView.separated(
             padding: EdgeInsets.all(16.0),
             itemCount: payments.length,
-            separatorBuilder: (context, index) => Divider(),
+            separatorBuilder: (context, index) => SizedBox(height: 8),
             itemBuilder: (context, index) {
               final payment = payments[index];
               final isPaid = payment['status'] == '1';
 
-              return ListTile(
-                title: Text(
-                  payment['pos_name'] ?? 'Pembayaran Bulanan',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              return Card(
+                elevation: 0,
+                color: isPaid ? Colors.green[50] : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: isPaid ? Colors.green[100]! : Colors.grey[200]!,
+                    width: 1,
+                  ),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Bulan: ${payment['month_name'] ?? '-'}'),
-                    Text(
-                        'Jumlah: Rp. ${numberFormat.format(int.tryParse(payment['bill'] ?? '0'))}'),
-                  ],
+                child: ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  leading: Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isPaid ? Colors.green[100] : Colors.teal.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isPaid ? Icons.check_circle : Icons.payment,
+                      size: 20,
+                      color: isPaid ? Colors.green[600] : Colors.teal[600],
+                    ),
+                  ),
+                  title: Text(
+                    payment['pos_name'] ?? 'Pembayaran Bulanan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: isPaid ? Colors.green[800] : Colors.teal[800],
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bulan: ${payment['month_name'] ?? '-'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isPaid ? Colors.green[600] : Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          'Rp. ${numberFormat.format(int.tryParse(payment['bill'] ?? '0'))}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isPaid ? Colors.green[600] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                  onTap: () => _showPaymentDetails(payment, true),
                 ),
-                trailing: Icon(
-                  isPaid ? Icons.check_circle : Icons.cancel,
-                  color: isPaid ? Colors.green : Colors.red,
-                ),
-                onTap: () {
-                  _showPaymentDetails(payment, true);
-                },
               );
             },
           );
@@ -505,11 +537,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final numberFormat = NumberFormat.decimalPattern('id');
 
     return payments.isEmpty
-        ? Center(child: Text('Tidak ada data pembayaran bebas.'))
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  "Belum ada data pembayaran bebas",
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          )
         : ListView.separated(
             padding: EdgeInsets.all(16.0),
             itemCount: payments.length,
-            separatorBuilder: (context, index) => Divider(),
+            separatorBuilder: (context, index) => SizedBox(height: 8),
             itemBuilder: (context, index) {
               final payment = payments[index];
               final bill = payment['bill'] as int;
@@ -517,47 +561,86 @@ class _PaymentScreenState extends State<PaymentScreen> {
               final remaining = bill - totalPay;
               final isPaid = remaining <= 0;
 
-              return ListTile(
-                title: Text(
-                  payment['pos_name'] ?? 'Pembayaran Bebas',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isPaid ? Colors.green.shade700 : Colors.black,
+              return Card(
+                elevation: 0,
+                color: isPaid ? Colors.green[50] : (remaining > 0 ? Colors.orange[50] : Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: isPaid 
+                        ? Colors.green[100]! 
+                        : (remaining > 0 ? Colors.orange[100]! : Colors.grey[200]!),
+                    width: 1,
                   ),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isPaid)
-                      Text('LUNAS',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ))
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                child: ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  leading: Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isPaid 
+                          ? Colors.green[100] 
+                          : (remaining > 0 ? Colors.orange[100] : Colors.teal.withOpacity(0.1)),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isPaid ? Icons.check_circle : Icons.payment,
+                      size: 20,
+                      color: isPaid 
+                          ? Colors.green[600] 
+                          : (remaining > 0 ? Colors.orange[600] : Colors.teal[600]),
+                    ),
+                  ),
+                  title: Text(
+                    payment['pos_name'] ?? 'Pembayaran Bebas',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: isPaid 
+                          ? Colors.green[800] 
+                          : (remaining > 0 ? Colors.orange[800] : Colors.teal[800]),
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isPaid)
                           Text(
-                            'Terbayar: Rp${numberFormat.format(totalPay)}',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          Text(
-                            'Sisa: Rp${numberFormat.format(remaining)}',
+                            'LUNAS',
                             style: TextStyle(
-                              color: Colors.red.shade700,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[600]
                             ),
+                          )
+                        else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Terbayar: Rp${numberFormat.format(totalPay)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                'Sisa: Rp${numberFormat.format(remaining)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.red[600],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
+                  trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                  onTap: () => _showPaymentDetails(payment, false),
                 ),
-                trailing: Icon(
-                  isPaid ? Icons.check_circle : Icons.payment,
-                  color: isPaid ? Colors.green.shade700 : const Color.fromARGB(255, 210, 59, 25),
-                ),
-                onTap: () => _showPaymentDetails(payment, false),
               );
             },
           );

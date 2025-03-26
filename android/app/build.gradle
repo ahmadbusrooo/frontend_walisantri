@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace "com.example.app_walisantri"
-    compileSdkVersion 34  // ✅ Gunakan versi 33 untuk kompatibilitas FCM & Firebase
+    compileSdkVersion 35  // ✅ Gunakan versi 33 untuk kompatibilitas FCM & Firebase
     ndkVersion flutter.ndkVersion
 
     defaultConfig {
