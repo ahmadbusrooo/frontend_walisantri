@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import '../utils/shared_preferences_helper.dart';
+import '../services/connectivity_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 String formatTanggal(String? tanggal) {
   if (tanggal == null || tanggal.isEmpty) return '-';
@@ -24,6 +28,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   List<dynamic> _monthlyPayments = [];
   List<dynamic> _freePayments = [];
   String? _selectedPeriod;
+  bool _isOffline = false; // Tambahkan ini
+  Map<String, dynamic>? _cachedData; // Tambahkan untuk cache data
 
   @override
   void initState() {
@@ -32,64 +38,90 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _fetchPaymentData() async {
+    setState(() {
+      _isLoading = true;
+      _isOffline = false;
+    });
+
     try {
+      // Cek koneksi internet
+      final isConnected = await ConnectivityService.isConnected();
+      if (!isConnected) {
+        setState(() => _isOffline = true);
+        throw Exception('Tidak ada koneksi internet');
+      }
+
       final response = await ApiService.fetchPaymentData();
+
       if (response['status']) {
-        setState(() {
-          // Menyiapkan data periode
-          _periods = response['data'].map((period) {
-            return {
-              'period_id': period['period']['period_id'],
-              'period_start': period['period']['period_start'],
-              'period_end': period['period']['period_end'],
-              'status': period['period']['status'],
-            };
-          }).toList();
-
-          // Cari tahun aktif
-          final activePeriod = _periods.firstWhere(
-            (period) => period['status'] == "1",
-            orElse: () => null, // Jika tidak ada tahun aktif
-          );
-
-          // Setel tahun aktif sebagai pilihan default
-          _selectedPeriod = activePeriod?['period_id'];
-
-          // Menyiapkan pembayaran bulanan secara manual
-          _monthlyPayments = [];
-          response['data'].forEach((period) {
-            final bulanDetails = period['payments']['bulan']['details'] ?? [];
-            bulanDetails.forEach((detail) {
-              detail['period_id'] = period['period']['period_id'];
-              _monthlyPayments.add(detail);
-            });
-          });
-
-          // Menyiapkan pembayaran bebas secara manual
-          _freePayments = [];
-          response['data'].forEach((period) {
-            final bebasDetails = period['payments']['bebas']['details'] ?? [];
-            bebasDetails.forEach((detail) {
-              _freePayments.add({
-                ...detail,
-                'period_id': period['period']['period_id'].toString(),
-                'bill': int.parse(detail['bill'].toString()),
-                'total_pay': int.parse(detail['total_pay'].toString()),
-              });
-            });
-          });
-
-          _isLoading = false;
-        });
+        // Simpan data ke cache
+        await SharedPreferencesHelper.savePaymentData(
+            jsonEncode(response['data']));
+        _processData(response['data']);
       } else {
         throw Exception(response['message']);
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorSnackbar(e.toString());
+      // Coba load data dari cache jika ada
+      final cachedData = await SharedPreferencesHelper.getPaymentData();
+      if (cachedData != null) {
+        _processData(jsonDecode(cachedData));
+      }
+
+      setState(() => _isOffline = true);
+      _showErrorSnackbar(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      setState(() => _isLoading = false);
     }
+  }
+
+  void _processData(dynamic data) {
+    setState(() {
+      // Menyiapkan data periode
+      _periods = data.map((period) {
+        return {
+          'period_id': period['period']['period_id'],
+          'period_start': period['period']['period_start'],
+          'period_end': period['period']['period_end'],
+          'status': period['period']['status'],
+        };
+      }).toList();
+
+      // Cari tahun aktif
+      final activePeriod = _periods.firstWhere(
+        (period) => period['status'] == "1",
+        orElse: () => null, // Jika tidak ada tahun aktif
+      );
+
+      // Setel tahun aktif sebagai pilihan default
+      _selectedPeriod = activePeriod?['period_id'];
+
+      // Menyiapkan pembayaran bulanan secara manual
+      _monthlyPayments = [];
+      data.forEach((period) {
+        final bulanDetails = period['payments']['bulan']['details'] ?? [];
+        bulanDetails.forEach((detail) {
+          detail['period_id'] = period['period']['period_id'];
+          _monthlyPayments.add(detail);
+        });
+      });
+
+      // Menyiapkan pembayaran bebas secara manual
+      _freePayments = [];
+      data.forEach((period) {
+        final bebasDetails = period['payments']['bebas']['details'] ?? [];
+        bebasDetails.forEach((detail) {
+          _freePayments.add({
+            ...detail,
+            'period_id': period['period']['period_id'].toString(),
+            'bill': int.parse(detail['bill'].toString()),
+            'total_pay': int.parse(detail['total_pay'].toString()),
+          });
+        });
+      });
+
+      _isOffline = false;
+    });
   }
 
   void _showErrorSnackbar(String message) {
@@ -193,10 +225,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _showPaymentDetails(dynamic payment, bool isMonthly) {
     final numberFormat = NumberFormat.decimalPattern('id');
-    final statusColor = isMonthly 
+    final statusColor = isMonthly
         ? (payment['status'] == '1' ? Colors.green[700] : Colors.orange[700])
-        : ((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0) <= 0
-            ? Colors.green[700] : Colors.orange[700]);
+        : ((int.tryParse(payment['bill'].toString()) ?? 0) -
+                    (int.tryParse(payment['total_pay'].toString()) ?? 0) <=
+                0
+            ? Colors.green[700]
+            : Colors.orange[700]);
 
     showModalBottomSheet(
       context: context,
@@ -275,9 +310,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _buildDetailItem(
                         'Sisa Pembayaran',
                         'Rp ${numberFormat.format((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0))}',
-                        valueColor: ((int.tryParse(payment['bill'].toString()) ?? 0) - (int.tryParse(payment['total_pay'].toString()) ?? 0)) > 0
-                            ? Colors.red[600]
-                            : Colors.green[600],
+                        valueColor:
+                            ((int.tryParse(payment['bill'].toString()) ?? 0) -
+                                        (int.tryParse(payment['total_pay']
+                                                .toString()) ??
+                                            0)) >
+                                    0
+                                ? Colors.red[600]
+                                : Colors.green[600],
                       ),
                       _buildDetailItem(
                         'Terakhir Diupdate',
@@ -307,7 +347,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildDetailSection({required IconData icon, required List<Widget> children}) {
+  Widget _buildDetailSection(
+      {required IconData icon, required List<Widget> children}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -482,11 +523,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
                 child: ListTile(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   leading: Container(
                     padding: EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: isPaid ? Colors.green[100] : Colors.teal.withOpacity(0.1),
+                      color: isPaid
+                          ? Colors.green[100]
+                          : Colors.teal.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -511,7 +555,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           'Bulan: ${payment['month_name'] ?? '-'}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isPaid ? Colors.green[600] : Colors.grey[600],
+                            color:
+                                isPaid ? Colors.green[600] : Colors.grey[600],
                           ),
                         ),
                         Text(
@@ -519,13 +564,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: isPaid ? Colors.green[600] : Colors.grey[600],
+                            color:
+                                isPaid ? Colors.green[600] : Colors.grey[600],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      color: Colors.grey[400]),
                   onTap: () => _showPaymentDetails(payment, true),
                 ),
               );
@@ -563,41 +610,52 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
               return Card(
                 elevation: 0,
-                color: isPaid ? Colors.green[50] : (remaining > 0 ? Colors.orange[50] : Colors.white),
+                color: isPaid
+                    ? Colors.green[50]
+                    : (remaining > 0 ? Colors.orange[50] : Colors.white),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: isPaid 
-                        ? Colors.green[100]! 
-                        : (remaining > 0 ? Colors.orange[100]! : Colors.grey[200]!),
+                    color: isPaid
+                        ? Colors.green[100]!
+                        : (remaining > 0
+                            ? Colors.orange[100]!
+                            : Colors.grey[200]!),
                     width: 1,
                   ),
                 ),
                 child: ListTile(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   leading: Container(
                     padding: EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: isPaid 
-                          ? Colors.green[100] 
-                          : (remaining > 0 ? Colors.orange[100] : Colors.teal.withOpacity(0.1)),
+                      color: isPaid
+                          ? Colors.green[100]
+                          : (remaining > 0
+                              ? Colors.orange[100]
+                              : Colors.teal.withOpacity(0.1)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isPaid ? Icons.check_circle : Icons.payment,
                       size: 20,
-                      color: isPaid 
-                          ? Colors.green[600] 
-                          : (remaining > 0 ? Colors.orange[600] : Colors.teal[600]),
+                      color: isPaid
+                          ? Colors.green[600]
+                          : (remaining > 0
+                              ? Colors.orange[600]
+                              : Colors.teal[600]),
                     ),
                   ),
                   title: Text(
                     payment['pos_name'] ?? 'Pembayaran Bebas',
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
-                      color: isPaid 
-                          ? Colors.green[800] 
-                          : (remaining > 0 ? Colors.orange[800] : Colors.teal[800]),
+                      color: isPaid
+                          ? Colors.green[800]
+                          : (remaining > 0
+                              ? Colors.orange[800]
+                              : Colors.teal[800]),
                     ),
                   ),
                   subtitle: Padding(
@@ -609,10 +667,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           Text(
                             'LUNAS',
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[600]
-                            ),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[600]),
                           )
                         else
                           Column(
@@ -638,7 +695,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ],
                     ),
                   ),
-                  trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      color: Colors.grey[400]),
                   onTap: () => _showPaymentDetails(payment, false),
                 ),
               );

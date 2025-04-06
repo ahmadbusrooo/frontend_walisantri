@@ -3,10 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../utils/shared_preferences_helper.dart';
+import 'connectivity_service.dart';
 
 
 class ApiService {
-  static String baseUrl = "https://siputri.ppalmaruf.com/api";
+  static String baseUrl = "https://siputra.ppalmaruf.com/api";
 
   static void setBaseUrl(String unit) {
     if (unit == 'putra') {
@@ -252,6 +253,8 @@ static Future<Map<String, dynamic>> fetchInformationDetails(int informationId) a
 }
   // Fetch Dashboard Data
   static Future<Map<String, dynamic>> fetchDashboardData() async {
+     final isConnected = await ConnectivityService.isConnected();
+  if (!isConnected) throw Exception('Tidak ada koneksi internet');
     try {
       final headers = await _getHeaders();
       final response = await http.get(

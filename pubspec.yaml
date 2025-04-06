@@ -1,9 +1,9 @@
 name: app_walisantri
 description: "A new Flutter project."
 
-publish_to: 'none' 
+publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.6.0
@@ -25,11 +25,13 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   flutter_html: ^3.0.0-alpha.6
   url_launcher: ^6.1.11
-  path_provider: ^2.0.11  # Untuk mengakses direktori penyimpanan
-  pdf: ^3.10.4           # Untuk membuat file PDF
-  share_plus: ^7.0.2     # Untuk berbagi file
+  path_provider: ^2.0.11 # Untuk mengakses direktori penyimpanan
+  pdf: ^3.10.4 # Untuk membuat file PDF
+  share_plus: ^7.0.2 # Untuk berbagi file
   file_picker: ^9.2.1
   google_fonts: ^6.1.0
+  connectivity_plus: ^5.0.0
+  internet_connection_checker: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -58,12 +60,12 @@ flutter:
     - assets/fonts/Poppins-Bold.ttf
 
   fonts:
-    - family: LPMQ IsepMisbah  # Perhatikan indentasi 2 spasi
+    - family: LPMQ IsepMisbah # Perhatikan indentasi 2 spasi
       fonts:
-        - asset: assets/fonts/LPMQ IsepMisbah.ttf  # Indentasi 4 spasi
-    - family: Poppins  # Indentasi 2 spasi
+        - asset: assets/fonts/LPMQ IsepMisbah.ttf # Indentasi 4 spasi
+    - family: Poppins # Indentasi 2 spasi
       fonts:
-        - asset: assets/fonts/Poppins-Regular.ttf  # Indentasi 4 spasi
+        - asset: assets/fonts/Poppins-Regular.ttf # Indentasi 4 spasi
           weight: 400
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700

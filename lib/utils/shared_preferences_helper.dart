@@ -6,29 +6,30 @@ class SharedPreferencesHelper {
   static const String _tokenKey = 'token'; // Token autentikasi
   static const String _fcmTokenKey = 'fcm_token'; // Token FCM
   static const String _loggedInKey = 'loggedIn';
-static const String _selectedUnitKey = 'selected_unit';
+  static const String _selectedUnitKey = 'selected_unit';
 
 // Simpan unit yang dipilih
-static Future<void> saveSelectedUnit(String unit) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedUnitKey, unit);
-    print('[SharedPreferencesHelper] Unit berhasil disimpan: $unit');
-  } catch (e) {
-    print('[SharedPreferencesHelper] Gagal menyimpan unit: $e');
+  static Future<void> saveSelectedUnit(String unit) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedUnitKey, unit);
+      print('[SharedPreferencesHelper] Unit berhasil disimpan: $unit');
+    } catch (e) {
+      print('[SharedPreferencesHelper] Gagal menyimpan unit: $e');
+    }
   }
-}
 
 // Ambil unit yang disimpan
-static Future<String?> getSelectedUnit() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedUnitKey);
-  } catch (e) {
-    print('[SharedPreferencesHelper] Gagal mengambil unit: $e');
-    return null;
+  static Future<String?> getSelectedUnit() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_selectedUnitKey);
+    } catch (e) {
+      print('[SharedPreferencesHelper] Gagal mengambil unit: $e');
+      return null;
+    }
   }
-}
+
   // Inisialisasi SharedPreferences saat aplikasi dimulai
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -91,28 +92,50 @@ static Future<String?> getSelectedUnit() async {
       print('[SharedPreferencesHelper] Gagal menghapus token FCM: $e');
     }
   }
-static const String _keyIsFirstInstall = 'isFirstInstall';
-static const String _keyIsTutorialShown = 'isTutorialShown';
 
-static Future<bool> isFirstInstall() async {
+  static const String _keyIsFirstInstall = 'isFirstInstall';
+  static const String _keyIsTutorialShown = 'isTutorialShown';
+
+  static Future<bool> isFirstInstall() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyIsFirstInstall) ?? true;
+  }
+
+  static Future<void> setFirstInstall(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIsFirstInstall, value);
+  }
+
+  static Future<bool> isTutorialShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyIsTutorialShown) ?? false;
+  }
+
+  static Future<void> setTutorialShown(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIsTutorialShown, value);
+  }
+
+  static Future<void> saveDashboardData(String data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('dashboard_data', data);
+  }
+
+  static Future<String?> getDashboardData() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('dashboard_data');
+  }
+
+  static Future<void> savePaymentData(String data) async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_keyIsFirstInstall) ?? true;
+  await prefs.setString('payment_data', data);
 }
 
-static Future<void> setFirstInstall(bool value) async {
+static Future<String?> getPaymentData() async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool(_keyIsFirstInstall, value);
+  return prefs.getString('payment_data');
 }
 
-static Future<bool> isTutorialShown() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_keyIsTutorialShown) ?? false;
-}
-
-static Future<void> setTutorialShown(bool value) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool(_keyIsTutorialShown, value);
-}
   // 🔹 Simpan status login
   static Future<void> setLoggedIn(bool value) async {
     try {

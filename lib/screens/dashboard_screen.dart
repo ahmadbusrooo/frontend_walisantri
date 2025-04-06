@@ -11,6 +11,9 @@ import 'custom_bottom_navigation_bar.dart';
 import 'information_detail_screen.dart'; // Import layar detail informasi
 import 'information_screen.dart';
 import 'package:intl/intl.dart';
+import '../services/connectivity_service.dart';
+import '../utils/shared_preferences_helper.dart';
+import 'dart:convert';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -19,8 +22,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? dashboardData;
+  Map<String, dynamic>? _cachedData;
   bool isLoading = true;
   int unreadNotifications = 3; // Contoh jumlah notifikasi yang belum dibaca
+  bool _isOffline = false;
 
   @override
   void initState() {
@@ -52,23 +57,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _fetchDashboardData() async {
-    setState(() {
-      isLoading = true; // Reset state untuk menampilkan loader
-    });
-    try {
+  setState(() => isLoading = true);
+  try {
+    final isConnected = await ConnectivityService.isConnected();
+    
+    if (isConnected) {
+      // JIKA ONLINE: AMBIL DATA BARU DARI API
       final data = await ApiService.fetchDashboardData();
-      print("Data Fetched: $data"); // Debugging untuk memverifikasi data
-      setState(() {
-        dashboardData = data['data']; // Perbarui state dengan data terbaru
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Error fetching dashboard data: $e');
-      setState(() {
-        isLoading = false; // Hentikan loader meskipun ada error
-      });
+      _cachedData = data['data']; // SIMPAN KE CACHE
+      await SharedPreferencesHelper.saveDashboardData(jsonEncode(data['data']));
+    } else {
+      // JIKA OFFLINE: COBA AMBIL DARI CACHE
+      final cachedData = await SharedPreferencesHelper.getDashboardData();
+      if (cachedData != null) {
+        _cachedData = jsonDecode(cachedData);
+      }
     }
+
+    setState(() {
+      dashboardData = _cachedData;
+      isLoading = false;
+      _isOffline = !isConnected;
+    });
+
+  } catch (e) {
+    // JIKA GAGAL, GUNAKAN DATA CACHE TERAKHIR
+    final cachedData = await SharedPreferencesHelper.getDashboardData();
+    setState(() {
+      dashboardData = cachedData != null ? jsonDecode(cachedData) : null;
+      isLoading = false;
+      _isOffline = true;
+    });
   }
+}
 
   String formatCurrency(dynamic amount) {
     if (amount == null) return '0';
@@ -148,7 +169,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: RefreshIndicator(
-        onRefresh: _fetchDashboardData,
+         onRefresh: () async {
+    // TETAP IJINKAN REFRESH MESKI OFFLINE
+    await _fetchDashboardData();
+    if (_isOffline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Anda Sedang Ofline, Silahkan Cek Koneksi Internet, Dan Refresh Kembali Halaman Ini'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  },
         child: isLoading
             ? Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -239,13 +271,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-      'Walisantri',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 18, // Ukuran lebih kecil dari nama
-        fontWeight: FontWeight.w500,
-      ),
-    ),
+                                      'Walisantri',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize:
+                                            18, // Ukuran lebih kecil dari nama
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                     Text(
                                       _shortenText(
                                         dashboardData?['student_full_name'] ??
@@ -288,19 +321,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 child: CircleAvatar(
-  radius: 44,
-  backgroundImage: dashboardData != null &&
-          dashboardData!['student_img'] != null
-      ? NetworkImage(
-          "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/student/${dashboardData!['student_img']}",
-        )
-      : null,
-  child: dashboardData == null ||
-          dashboardData!['student_img'] == null
-      ? Icon(Icons.person,
-          size: 40, color: Colors.white)
-      : null,
-),
+                                  radius: 44,
+                                  backgroundImage: dashboardData != null &&
+                                          dashboardData!['student_img'] != null
+                                      ? NetworkImage(
+                                          "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/student/${dashboardData!['student_img']}",
+                                        )
+                                      : null,
+                                  child: dashboardData == null ||
+                                          dashboardData!['student_img'] == null
+                                      ? Icon(Icons.person,
+                                          size: 40, color: Colors.white)
+                                      : null,
+                                ),
                               ),
                             ],
                           ),
@@ -310,6 +343,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     SizedBox(height: 20),
 
+    AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      height: _isOffline ? 50 : 0,
+      color: Colors.red,
+      child: Center(
+        child: Text(
+          'Anda sedang offline. Data mungkin tidak terupdate.',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    ),
+ SizedBox(height: 20),
                     // Saldo Section
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -391,7 +436,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   builder: (context) => NadzhamanScreen()),
                             );
                           }),
-                          _buildMenuItem(Icons.menu_book, "Kitab",() {
+                          _buildMenuItem(Icons.menu_book, "Kitab", () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -466,7 +511,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (dashboardData != null &&
                               dashboardData!['information'] != null)
                             Column(
-                              children: [
+  children: [
+    if (_isOffline && dashboardData == null)
+      Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.wifi_off, size: 50, color: Colors.grey),
+              Text('Tidak dapat memuat data\nSambungkan ke internet',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
+      )
+    else if (dashboardData != null && dashboardData!['information'] != null)
+      Column(
+        children: [
                                 ...List.generate(
                                   dashboardData!['information'].length > 3
                                       ? 3
@@ -484,14 +546,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       child: ListTile(
                                         leading: info['information_img'] != null
                                             ? ClipRRect(
-  borderRadius: BorderRadius.circular(8),
-  child: Image.network(
-    "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/information/${info['information_img']}",
-    width: 70,
-    height: 70,
-    fit: BoxFit.cover,
-  ),
-)
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: Image.network(
+                                                  "${ApiService.baseUrl.replaceAll('/api', '')}/uploads/information/${info['information_img']}",
+                                                  width: 70,
+                                                  height: 70,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              )
                                             : Icon(Icons.info,
                                                 size: 50, color: Colors.teal),
                                         title: Text(
@@ -580,6 +643,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                         ],
                       ),
+                        ],
+                      )
                     ),
                   ],
                 ),

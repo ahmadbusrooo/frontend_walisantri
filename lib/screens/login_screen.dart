@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
+import 'dart:async';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../utils/shared_preferences_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/connectivity_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -19,11 +22,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _deviceInfo = "Unknown Device";
+  bool _isOffline = false;
   String? _fcmToken;
   Color _nisBorderColor = Colors.grey[300]!;
   Color _passwordBorderColor = Colors.grey[300]!;
   Color _nisBackgroundColor = Colors.transparent;
   Color _passwordBackgroundColor = Colors.transparent;
+  StreamSubscription? _connectivitySubscription;
 
   // Tambahan untuk tutorial
   int _currentTutorialStep = 0;
@@ -34,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey _passwordFieldKey = GlobalKey();
   String? _selectedUnit; // 'putra' atau 'putri'
 
-bool _validateUnit() {
+  bool _validateUnit() {
     if (_selectedUnit == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Pilih unit pondok terlebih dahulu')),
@@ -50,9 +55,18 @@ bool _validateUnit() {
     _loadSavedUnit();
     _getDeviceInfo();
     _getFcmToken();
-    _checkFirstInstall(); // Tambahkan ini
+    _checkFirstInstall();
+    _initConnectivity();
   }
-Future<void> _loadSavedUnit() async {
+
+  void _initConnectivity() {
+    _connectivitySubscription =
+        ConnectivityService.connectionStream.listen((isConnected) {
+      setState(() => _isOffline = !isConnected);
+    });
+  }
+
+  Future<void> _loadSavedUnit() async {
     final savedUnit = await SharedPreferencesHelper.getSelectedUnit();
     if (savedUnit != null) {
       setState(() {
@@ -61,6 +75,7 @@ Future<void> _loadSavedUnit() async {
       ApiService.setBaseUrl(savedUnit); // Set base URL sesuai yang disimpan
     }
   }
+
   // TAMBAHKAN METHOD-METHOD BARU INI
   void _checkFirstInstall() async {
     bool firstInstall = await SharedPreferencesHelper.isFirstInstall();
@@ -162,25 +177,26 @@ Future<void> _loadSavedUnit() async {
     );
   }
 
-Future<void> _launchWhatsApp() async {
-  final phoneNumber = "6282235968001"; // Ganti dengan nomor admin
-  final message = "Halo min, saya lupa password saya. Mohon bantuannya";
-  
-  final url = Uri.parse(
-    "https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}",
-  );
+  Future<void> _launchWhatsApp() async {
+    final phoneNumber = "6282235968001"; // Ganti dengan nomor admin
+    final message = "Halo min, saya lupa password saya. Mohon bantuannya";
 
-  if (await canLaunchUrl(url)) {
-    await launchUrl(
-      url,
-      mode: LaunchMode.externalApplication,
+    final url = Uri.parse(
+      "https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}",
     );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("WhatsApp tidak terinstall")),
-    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("WhatsApp tidak terinstall")),
+      );
+    }
   }
-}
+
   Future<void> _setupFCM() async {
     NotificationSettings settings =
         await FirebaseMessaging.instance.requestPermission(
@@ -379,12 +395,13 @@ Future<void> _launchWhatsApp() async {
 
   // Fungsi untuk validasi input sebelum login
   bool _validateInput() {
-    if (_selectedUnit == null) { // Pindahkan validasi unit ke sini
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Pilih unit pondok terlebih dahulu')),
-    );
-    return false;
-  }
+    if (_selectedUnit == null) {
+      // Pindahkan validasi unit ke sini
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pilih unit pondok terlebih dahulu')),
+      );
+      return false;
+    }
     if (_nisController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('NIS tidak boleh kosong')),
@@ -401,8 +418,20 @@ Future<void> _launchWhatsApp() async {
   }
 
   Future<void> _login() async {
-  if (!_validateUnit() || !_validateInput()) return;
-ApiService.setBaseUrl(_selectedUnit!);
+    if (!_validateUnit() || !_validateInput()) return;
+
+final isConnected = await ConnectivityService.isConnected();
+  if (!isConnected) {
+    setState(() => _isOffline = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Tidak ada koneksi internet.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+    ApiService.setBaseUrl(_selectedUnit!);
     setState(() {
       _isLoading = true;
     });
@@ -500,6 +529,25 @@ ApiService.setBaseUrl(_selectedUnit!);
             ),
           ),
           Positioned(
+          top: 280,
+          left: 0,
+          right: 0,
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            height: _isOffline ? 50 : 0,
+            color: Colors.red,
+            child: Center(
+              child: Text(
+                'Tidak ada koneksi internet',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16
+                ),
+              ),
+            ),
+          ),
+        ),
+          Positioned(
             top: 230,
             left: 0,
             right: 0,
@@ -526,7 +574,7 @@ ApiService.setBaseUrl(_selectedUnit!);
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(height: 50),
-                   
+
                     // TAMBAHKAN COMPOSITED TRANSFORM TARGET
                     CompositedTransformTarget(
                       link: _nisLayerLink,
@@ -607,64 +655,65 @@ ApiService.setBaseUrl(_selectedUnit!);
                       ),
                     ),
                     SizedBox(height: 20),
-                     Container(
-  decoration: BoxDecoration(
-    border: Border.all(color: Colors.grey[300]!),
-    borderRadius: BorderRadius.circular(12),
-  ),
-  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Pilih Unit Pondok',
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
-      ),
-      Row(
-        children: [
-          Expanded(
-            child: RadioListTile<String>(
-              title: Text('Putra'),
-              value: 'putra',
-              groupValue: _selectedUnit,
-              onChanged: (value) {
-                setState(() {
-                  _selectedUnit = value;
-                });
-              },
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              activeColor: Colors.teal,
-            ),
-          ),
-          Expanded(
-            child: RadioListTile<String>(
-              title: Text('Putri'),
-              value: 'putri',
-              groupValue: _selectedUnit,
-              onChanged: (value) {
-                setState(() {
-                  _selectedUnit = value;
-                });
-              },
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              activeColor: Colors.teal,
-            ),
-          ),
-        ],
-      ),
-    ],
-  ),
-),
-SizedBox(height: 5),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pilih Unit Pondok',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text('Putra'),
+                                  value: 'putra',
+                                  groupValue: _selectedUnit,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedUnit = value;
+                                    });
+                                  },
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  activeColor: Colors.teal,
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text('Putri'),
+                                  value: 'putri',
+                                  groupValue: _selectedUnit,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedUnit = value;
+                                    });
+                                  },
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  activeColor: Colors.teal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 5),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                      onPressed: _launchWhatsApp,
+                        onPressed: _launchWhatsApp,
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -686,11 +735,11 @@ SizedBox(height: 5),
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: _login,
-                              child: Text('LOGIN',
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.2)),
+      child: Text('LOGIN',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2)),
                               style: ElevatedButton.styleFrom(
                                 padding: EdgeInsets.symmetric(vertical: 16),
                                 backgroundColor: Colors.teal,
@@ -713,6 +762,8 @@ SizedBox(height: 5),
     );
   }
 }
+
+
 
 class _ArrowPainter extends CustomPainter {
   @override

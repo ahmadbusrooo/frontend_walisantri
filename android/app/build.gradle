@@ -5,13 +5,19 @@ plugins {
     id "com.google.gms.google-services" // Plugin Firebase
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.example.app_walisantri"
     compileSdkVersion 35  // ✅ Gunakan versi 33 untuk kompatibilitas FCM & Firebase
     ndkVersion flutter.ndkVersion
 
     defaultConfig {
-        applicationId "com.example.app_walisantri"
+        applicationId "com.walisantri.app"
         minSdkVersion 21  // ✅ Pastikan minSdkVersion >= 21
         targetSdkVersion 34 // ✅ Sesuaikan dengan compileSdkVersion
         versionCode flutter.versionCode
@@ -19,10 +25,20 @@ android {
 
         multiDexEnabled true  // ✅ Jika aplikasi memiliki banyak dependensi
     }
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
         }
     }
 
